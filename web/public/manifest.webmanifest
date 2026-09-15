@@ -1,0 +1,15 @@
+{
+  "name": "ScriptGrade",
+  "short_name": "ScriptGrade",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f6f1e8",
+  "theme_color": "#8b1e3f",
+  "icons": [
+    {
+      "src": "/globe.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

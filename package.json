@@ -1,0 +1,22 @@
+{
+  "name": "scriptgrade",
+  "private": true,
+  "version": "0.1.0",
+  "description": "ScriptGrade — AI-assisted assessment of handwritten student exercises",
+  "workspaces": [
+    "packages/domain",
+    "api"
+  ],
+  "scripts": {
+    "dev:api": "npm run start:dev -w api",
+    "dev:web": "npm run dev --prefix web",
+    "build:api": "npm run build -w api",
+    "build:domain": "npm run build -w @scriptgrade/domain",
+    "db:generate": "npm run prisma:generate -w api",
+    "db:migrate": "npm run prisma:migrate -w api",
+    "db:seed": "npm run prisma:seed -w api"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

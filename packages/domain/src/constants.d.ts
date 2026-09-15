@@ -1,0 +1,12 @@
+export declare const SYSTEM_MAX_PAGES = 10;
+export declare const DEFAULT_GRACE_SECONDS: number;
+export declare const MIN_GRACE_SECONDS = 0;
+export declare const MAX_GRACE_SECONDS: number;
+export declare const STUDENT_RESUBMIT_CAP = 10;
+export declare const DEFAULT_RETENTION_YEARS = 5;
+export declare const OTP_TTL_MINUTES = 10;
+export declare const OTP_LENGTH = 6;
+export declare const MIN_PASSWORD_LENGTH = 8;
+export declare const DEFAULT_SIMILARITY_THRESHOLD = 0.75;
+export declare const ACCESS_TOKEN_TTL = "15m";
+export declare const REFRESH_TOKEN_TTL = "7d";

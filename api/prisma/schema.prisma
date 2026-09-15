@@ -1,0 +1,648 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+enum Locale {
+  EN
+  FR
+}
+
+enum ExerciseLanguage {
+  EN
+  FR
+}
+
+enum ExerciseStatus {
+  DRAFT
+  PUBLISHED
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum SubmissionStatus {
+  DRAFT
+  RESERVING
+  UPLOADING
+  SUBMITTED
+  PROCESSING
+  AI_PROPOSED
+  IN_REVIEW
+  RETURNED
+  GRADED
+  RELEASED
+}
+
+enum CriterionKind {
+  NORMAL
+  SPELLING
+  LENGTH
+}
+
+enum SpellingErrorStatus {
+  SUSPECT
+  CONFIRMED
+  DISMISSED
+}
+
+enum ReservationStatus {
+  ACTIVE
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+enum PageQuality {
+  PENDING
+  OK
+  FAIL_BLUR
+  FAIL_DARK
+  FAIL_RESOLUTION
+  FAIL_BLANK
+  FAIL_CHECKSUM
+}
+
+enum VersionSource {
+  STUDENT
+  RETURN
+}
+
+model Campus {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  timezone  String   @default("UTC")
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  students  Student[]
+  lecturers Lecturer[]
+  offerings CourseOffering[]
+}
+
+model Faculty {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  departments Department[]
+  programmes  Programme[]
+  students    Student[]
+  lecturers   Lecturer[]
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  facultyId String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  faculty    Faculty     @relation(fields: [facultyId], references: [id])
+  programmes Programme[]
+  students   Student[]
+  lecturers  Lecturer[]
+}
+
+model Programme {
+  id           String   @id @default(cuid())
+  code         String   @unique
+  name         String
+  facultyId    String?
+  departmentId String?
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  faculty    Faculty?    @relation(fields: [facultyId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  students   Student[]
+  offerings  CourseOffering[]
+}
+
+model Course {
+  id        String   @id @default(cuid())
+  code      String
+  title     String
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  offerings CourseOffering[]
+
+  @@unique([code])
+}
+
+model AcademicTerm {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  startsAt  DateTime? @db.Timestamptz
+  endsAt    DateTime? @db.Timestamptz
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+
+  offerings CourseOffering[]
+}
+
+model AcademicLevel {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String   @unique
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @updatedAt @db.Timestamptz
+}
+
+model CourseOffering {
+  id           String   @id @default(cuid())
+  offeringKey  String   @unique
+  courseId     String
+  termId       String
+  campusId     String
+  programmeId  String
+  level        String
+  group        String?
+  timezone     String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  course     Course        @relation(fields: [courseId], references: [id])
+  term       AcademicTerm  @relation(fields: [termId], references: [id])
+  campus     Campus        @relation(fields: [campusId], references: [id])
+  programme  Programme     @relation(fields: [programmeId], references: [id])
+  lecturers  OfferingLecturer[]
+  enrolments Enrolment[]
+  exercises  Exercise[]
+}
+
+model Student {
+  id               String   @id @default(cuid())
+  matricule        String   @unique
+  universityEmail  String?  @unique
+  firstName        String
+  lastName         String
+  active           Boolean  @default(true)
+  campusId         String?
+  facultyId        String?
+  departmentId     String?
+  programmeId      String?
+  level            String?
+  academicYear     String?
+  photoKey         String?
+  onboardingCompletedAt DateTime? @db.Timestamptz
+  createdAt        DateTime @default(now()) @db.Timestamptz
+  updatedAt        DateTime @updatedAt @db.Timestamptz
+
+  campus      Campus?      @relation(fields: [campusId], references: [id])
+  faculty     Faculty?     @relation(fields: [facultyId], references: [id])
+  department  Department?  @relation(fields: [departmentId], references: [id])
+  programme   Programme?   @relation(fields: [programmeId], references: [id])
+  account     UserAccount?
+  enrolments  Enrolment[]
+  submissions Submission[]
+  draftPages  DraftPage[]
+}
+
+model Lecturer {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  firstName    String
+  lastName     String
+  active       Boolean  @default(true)
+  campusId     String?
+  facultyId    String?
+  departmentId String?
+  photoKey     String?
+  onboardingCompletedAt DateTime? @db.Timestamptz
+  createdAt    DateTime @default(now()) @db.Timestamptz
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  campus            Campus?            @relation(fields: [campusId], references: [id])
+  faculty           Faculty?           @relation(fields: [facultyId], references: [id])
+  department        Department?        @relation(fields: [departmentId], references: [id])
+  account           UserAccount?
+  offerings         OfferingLecturer[]
+  ownedExercises    Exercise[]          @relation("ExerciseOwner")
+  exerciseAccess    ExerciseAccess[]
+  reviewsStarted    Submission[]        @relation("SubmissionReviewer")
+}
+
+model OfferingLecturer {
+  offeringId String
+  lecturerId String
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  offering CourseOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+  lecturer Lecturer       @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@id([offeringId, lecturerId])
+}
+
+model Enrolment {
+  studentId  String
+  offeringId String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now()) @db.Timestamptz
+  updatedAt  DateTime @updatedAt @db.Timestamptz
+
+  student  Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  offering CourseOffering @relation(fields: [offeringId], references: [id], onDelete: Cascade)
+
+  @@id([studentId, offeringId])
+}
+
+model UserAccount {
+  id             String    @id @default(cuid())
+  role           UserRole
+  passwordHash   String?
+  locale         Locale    @default(EN)
+  studentId      String?   @unique
+  lecturerId     String?   @unique
+  adminEmail     String?   @unique
+  lastLoginAt    DateTime? @db.Timestamptz
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @db.Timestamptz
+
+  student  Student?  @relation(fields: [studentId], references: [id])
+  lecturer Lecturer? @relation(fields: [lecturerId], references: [id])
+
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  accountId String
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  account UserAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+}
+
+model ActivationOtp {
+  id          String    @id @default(cuid())
+  studentId   String?
+  accountId   String?
+  targetEmail String?
+  codeHash    String
+  purpose     String
+  expiresAt   DateTime  @db.Timestamptz
+  consumedAt  DateTime? @db.Timestamptz
+  createdAt   DateTime  @default(now()) @db.Timestamptz
+
+  @@index([studentId, purpose])
+  @@index([accountId, purpose])
+}
+
+model Exercise {
+  id                   String           @id @default(cuid())
+  offeringId           String
+  ownerLecturerId      String
+  title                String
+  prompt               String
+  language             ExerciseLanguage
+  maxScore             Decimal          @db.Decimal(8, 2)
+  minWords             Int              @default(0)
+  maxPages             Int              @default(10)
+  minPages             Int              @default(1)
+  opensAt              DateTime         @db.Timestamptz
+  closesAt             DateTime         @db.Timestamptz
+  graceSeconds         Int              @default(1800)
+  similarityThreshold  Decimal          @default(0.75) @db.Decimal(5, 4)
+  showSpellingToStudent Boolean         @default(true)
+  status               ExerciseStatus   @default(DRAFT)
+  rubricFrozen         Boolean          @default(false)
+  createdAt            DateTime         @default(now()) @db.Timestamptz
+  updatedAt            DateTime         @updatedAt @db.Timestamptz
+
+  offering   CourseOffering     @relation(fields: [offeringId], references: [id])
+  owner      Lecturer           @relation("ExerciseOwner", fields: [ownerLecturerId], references: [id])
+  criteria   RubricCriterion[]
+  bands      GradeBand[]
+  access     ExerciseAccess[]
+  submissions Submission[]
+  draftPages DraftPage[]
+  returns    ReturnRequest[]
+}
+
+model ExerciseAccess {
+  exerciseId String
+  lecturerId String
+  grantedById String?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  lecturer Lecturer @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, lecturerId])
+}
+
+model RubricCriterion {
+  id                String        @id @default(cuid())
+  exerciseId        String
+  name              String
+  maxPoints         Decimal       @db.Decimal(8, 2)
+  kind              CriterionKind @default(NORMAL)
+  sortOrder         Int
+  spellingDeduction Decimal?      @db.Decimal(8, 2)
+  spellingFloor     Decimal?      @db.Decimal(8, 2)
+  createdAt         DateTime      @default(now()) @db.Timestamptz
+  updatedAt         DateTime      @updatedAt @db.Timestamptz
+
+  exercise Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  scores   CriterionScore[]
+  aiScores AiCriterionScore[]
+
+  @@index([exerciseId, sortOrder])
+}
+
+model GradeBand {
+  id         String  @id @default(cuid())
+  exerciseId String
+  minScore   Decimal @db.Decimal(8, 2)
+  maxScore   Decimal @db.Decimal(8, 2)
+  labelEn    String
+  labelFr    String
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+}
+
+model Submission {
+  id                    String           @id @default(cuid())
+  exerciseId            String
+  studentId             String
+  currentVersionId      String?          @unique
+  status                SubmissionStatus @default(DRAFT)
+  studentResubmitCount  Int              @default(0)
+  reviewStartedAt       DateTime?        @db.Timestamptz
+  reviewerId            String?
+  releasedAt            DateTime?        @db.Timestamptz
+  officialTotal         Decimal?         @db.Decimal(8, 2)
+  officialLetterEn      String?
+  officialLetterFr      String?
+  createdAt             DateTime         @default(now()) @db.Timestamptz
+  updatedAt             DateTime         @updatedAt @db.Timestamptz
+
+  exercise       Exercise          @relation(fields: [exerciseId], references: [id])
+  student        Student           @relation(fields: [studentId], references: [id])
+  reviewer       Lecturer?         @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
+  currentVersion SubmissionVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions       SubmissionVersion[] @relation("VersionParent")
+  scores         CriterionScore[]
+  feedback       LecturerFeedback?
+  returnRequests ReturnRequest[]
+
+  @@unique([exerciseId, studentId])
+}
+
+model SubmissionVersion {
+  id                   String             @id @default(cuid())
+  submissionId         String
+  source               VersionSource      @default(STUDENT)
+  reservationCreatedAt DateTime?          @db.Timestamptz
+  completedAt          DateTime?          @db.Timestamptz
+  pageCount            Int
+  isCurrent            Boolean            @default(false)
+  createdAt            DateTime           @default(now()) @db.Timestamptz
+
+  submission   Submission         @relation("VersionParent", fields: [submissionId], references: [id], onDelete: Cascade)
+  currentOf    Submission?        @relation("CurrentVersion")
+  reservation  UploadReservation?
+  pages        SubmissionPage[]
+  ocr          OcrDocument?
+  spelling     SpellingError[]
+  wordCount    WordCountEstimate?
+  aiProposal   AiProposal?
+  similarityHits SimilarityHit[]  @relation("HitFrom")
+  similarityAsPeer SimilarityHit[] @relation("HitPeer")
+}
+
+model UploadReservation {
+  id          String             @id @default(cuid())
+  versionId   String             @unique
+  status      ReservationStatus  @default(ACTIVE)
+  expiresAt   DateTime           @db.Timestamptz
+  slotCount   Int
+  createdAt   DateTime           @default(now()) @db.Timestamptz
+
+  version SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+model SubmissionPage {
+  id            String      @id @default(cuid())
+  versionId     String
+  slot          Int
+  originalKey   String?
+  workingKey    String?
+  sha256        String?
+  phash         String?
+  byteSize      Int?
+  mimeType      String?
+  quality       PageQuality @default(PENDING)
+  retainUntil   DateTime    @db.Timestamptz
+  replaceCount  Int         @default(0)
+  createdAt     DateTime    @default(now()) @db.Timestamptz
+  updatedAt     DateTime    @updatedAt @db.Timestamptz
+
+  version SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, slot])
+}
+
+model DraftPage {
+  id          String   @id @default(cuid())
+  studentId   String
+  exerciseId  String
+  slot        Int
+  storageKey  String
+  sha256      String?
+  retainUntil DateTime @db.Timestamptz
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, exerciseId, slot])
+}
+
+model OcrDocument {
+  id          String   @id @default(cuid())
+  versionId   String   @unique
+  rawText     String
+  tokensJson  Json
+  provider    String
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  version SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+model SpellingError {
+  id         String              @id @default(cuid())
+  versionId  String
+  pageSlot   Int?
+  token      String
+  suggestion String?
+  status     SpellingErrorStatus @default(SUSPECT)
+  reason     String?
+  createdAt  DateTime            @default(now()) @db.Timestamptz
+  updatedAt  DateTime            @updatedAt @db.Timestamptz
+
+  version SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+}
+
+model WordCountEstimate {
+  id          String   @id @default(cuid())
+  versionId   String   @unique
+  estimated   Int
+  minWords    Int
+  confidence  String
+  belowMin    Boolean
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  version SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+}
+
+model AiProposal {
+  id                   String   @id @default(cuid())
+  versionId            String   @unique
+  overallScore         Decimal? @db.Decimal(8, 2)
+  confidence           String?
+  strengths            String
+  weaknesses           String
+  suggestions          String
+  abstainNotes         String?
+  needsLecturerReview  Boolean  @default(false)
+  reviewFlags          Json?
+  spellingFindings     Json?
+  provider             String
+  model                String
+  rawJson              Json?
+  createdAt            DateTime @default(now()) @db.Timestamptz
+
+  version    SubmissionVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  criteria   AiCriterionScore[]
+}
+
+model AiCriterionScore {
+  id           String  @id @default(cuid())
+  proposalId   String
+  criterionId  String
+  proposed     Decimal @db.Decimal(8, 2)
+  abstained    Boolean @default(false)
+  evidence     String?
+
+  proposal  AiProposal      @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  criterion RubricCriterion @relation(fields: [criterionId], references: [id])
+
+  @@unique([proposalId, criterionId])
+}
+
+model CriterionScore {
+  id           String   @id @default(cuid())
+  submissionId String
+  criterionId  String
+  score        Decimal  @db.Decimal(8, 2)
+  overridden   Boolean  @default(false)
+  overrideNote String?
+  updatedAt    DateTime @updatedAt @db.Timestamptz
+
+  submission Submission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  criterion  RubricCriterion @relation(fields: [criterionId], references: [id])
+
+  @@unique([submissionId, criterionId])
+}
+
+model LecturerFeedback {
+  id          String   @id @default(cuid())
+  submissionId String  @unique
+  remarks     String   @default("")
+  strengths   String   @default("")
+  weaknesses  String   @default("")
+  suggestions String   @default("")
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model SimilarityHit {
+  id            String   @id @default(cuid())
+  versionId     String
+  peerVersionId String
+  textScore     Decimal  @db.Decimal(6, 4)
+  imageScore    Decimal  @db.Decimal(6, 4)
+  details       Json?
+  createdAt     DateTime @default(now()) @db.Timestamptz
+
+  version     SubmissionVersion @relation("HitFrom", fields: [versionId], references: [id], onDelete: Cascade)
+  peerVersion SubmissionVersion @relation("HitPeer", fields: [peerVersionId], references: [id], onDelete: Cascade)
+
+  @@unique([versionId, peerVersionId])
+}
+
+model ReturnRequest {
+  id             String    @id @default(cuid())
+  exerciseId     String
+  submissionId   String
+  reason         String
+  personalDueAt  DateTime  @db.Timestamptz
+  unreleased     Boolean   @default(false)
+  createdAt      DateTime  @default(now()) @db.Timestamptz
+  resolvedAt     DateTime? @db.Timestamptz
+
+  exercise   Exercise   @relation(fields: [exerciseId], references: [id])
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  reason     String?
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @db.Timestamptz
+
+  actor UserAccount? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model ImportBatch {
+  id           String   @id @default(cuid())
+  kind         String
+  filename     String
+  actorId      String?
+  rowCount     Int
+  successCount Int
+  errorCount   Int
+  errors       Json
+  createdAt    DateTime @default(now()) @db.Timestamptz
+}
+
+model AppSetting {
+  key   String @id
+  value String
+}
